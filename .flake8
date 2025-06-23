@@ -1,0 +1,34 @@
+[flake8]
+max-line-length = 88
+extend-ignore =
+    E203,
+    W503,
+    E501,
+    E266,
+    E731,
+    W504,
+    B008,
+    B006
+per-file-ignores =
+    # Ignore missing docstrings in tests
+    tests/*.py: D100,D101,D102,D103,D104,D105,D107
+    # Ignore line-too-long in test data
+    tests/test_data/*.py: E501
+    # Ignore missing docstrings in __init__.py
+    */__init__.py: D104
+    # Ignore import errors in tests
+    tests/*.py: F401,F403
+max-complexity = 10
+exclude =
+    .git,
+    __pycache__,
+    .pytest_cache,
+    .mypy_cache,
+    .venv,
+    venv,
+    build,
+    dist,
+    .eggs,
+    *.egg-info,
+    .tox
+select = B,C,E,F,W,T4,B9

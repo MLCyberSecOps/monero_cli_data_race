@@ -1,7 +1,31 @@
+# Virtual Environment
+venv/
+.venv/
+ENV/
+env/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Local configuration and output files
+*.local
+.env
+*.json
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local development files
+monero_analysis_*.json
+mutex_checker_*.json
+
+# Logs
+*.log
 
 # C extensions
 *.so
