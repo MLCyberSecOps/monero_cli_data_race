@@ -2,6 +2,10 @@
 
 ThreadGuard is a static analysis tool designed to detect concurrency-related issues in C++ code, with special focus on thread safety, data races, and locking patterns. It was specifically developed to analyze Monero's `async_stdin_reader` class but can be adapted for general C++ codebase analysis.
 
+## Author
+
+[![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kumar07/)
+
 ## Features
 
 - **Data Race Detection**: Identifies unsynchronized access to shared variables across multiple threads
