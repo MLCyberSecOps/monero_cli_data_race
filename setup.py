@@ -2,7 +2,8 @@
 """ThreadGuard: Advanced Static Analysis for Concurrency Bug Detection."""
 
 import os
-from setuptools import setup, find_packages
+
+from setuptools import find_packages, setup
 
 # Read the contents of README.md for the long description
 with open("README.md", "r", encoding="utf-8") as fh:
@@ -10,7 +11,9 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 # Read requirements from requirements.txt
 with open("requirements.txt", "r", encoding="utf-8") as fh:
-    requirements = [line.strip() for line in fh if line.strip() and not line.startswith("#")]
+    requirements = [
+        line.strip() for line in fh if line.strip() and not line.startswith("#")
+    ]
 
 setup(
     name="threadguard",

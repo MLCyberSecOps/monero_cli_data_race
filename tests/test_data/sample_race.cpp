@@ -17,10 +17,10 @@ void increment() {
 int main() {
     std::thread t1(increment);
     std::thread t2(increment);
-    
+
     t1.join();
     t2.join();
-    
+
     std::cout << "Final counter value: " << counter << std::endl;
     return 0;
 }

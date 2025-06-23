@@ -43,7 +43,7 @@ cd monero_cli_data_race
 
 # Create and activate virtual environment
 python3 -m venv venv
-source venv/bin/activate  
+source venv/bin/activate
 # This script has not been tested on Windows. On Windows: venv\Scripts\activate
 
 # Install dependencies

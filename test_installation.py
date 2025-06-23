@@ -7,9 +7,9 @@ and can detect basic concurrency issues.
 """
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
 
 # Test cases with known issues
@@ -29,20 +29,19 @@ void increment_counter() {
 
 int main() {
     std::vector<std::thread> threads;
-    
+
     for (int i = 0; i < 4; ++i) {
         threads.emplace_back(increment_counter);
     }
-    
+
     for (auto& t : threads) {
         t.join();
     }
-    
+
     std::cout << "Final counter: " << global_counter << std::endl;
     return 0;
 }
 """,
-
     "lock_guard_good.cpp": """
 #include <iostream>
 #include <thread>
@@ -61,20 +60,19 @@ void safe_increment() {
 
 int main() {
     std::vector<std::thread> threads;
-    
+
     for (int i = 0; i < 4; ++i) {
         threads.emplace_back(safe_increment);
     }
-    
+
     for (auto& t : threads) {
         t.join();
     }
-    
+
     std::cout << "Final counter: " << protected_counter << std::endl;
     return 0;
 }
 """,
-
     "deadlock_risk.cpp": """
 #include <mutex>
 #include <thread>
@@ -91,20 +89,19 @@ void function1() {
 void function2() {
     std::lock_guard<std::mutex> lock2(mutex2);  // Different order!
     std::lock_guard<std::mutex> lock1(mutex1);  // Potential deadlock
-    // Do some work  
+    // Do some work
 }
 
 int main() {
     std::thread t1(function1);
     std::thread t2(function2);
-    
+
     t1.join();
     t2.join();
-    
+
     return 0;
 }
 """,
-
     "monero_style.cpp": """
 #include <mutex>
 #include <atomic>
@@ -114,19 +111,19 @@ class async_stdin_reader {
 private:
     volatile int m_read_status;  // Should be atomic
     mutable std::mutex m_response_mutex;
-    
+
 public:
     void check_status() {
         if (m_read_status == 1) {  // Unsynchronized access
             // Handle status
         }
     }
-    
+
     void set_status(int status) {
         // Missing synchronization
         m_read_status = status;
     }
-    
+
     void safe_check_status() {
         std::lock_guard<std::mutex> lock(m_response_mutex);
         if (m_read_status == 1) {  // This is properly protected
@@ -134,75 +131,92 @@ public:
         }
     }
 };
-"""
+""",
 }
+
 
 def test_dependencies():
     """Test if required dependencies are available"""
     print("🔍 Testing dependencies...")
-    
+
     # Test Python version
     if sys.version_info < (3, 6):
         print("❌ Python 3.6+ required")
         return False
     print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}")
-    
+
     # Test networkx (optional)
     try:
         import networkx
+
         print(f"✅ networkx {networkx.__version__}")
         has_networkx = True
     except ImportError:
         print("⚠️ networkx not available (optional but recommended)")
         has_networkx = False
-    
+
     return True
+
 
 def run_threadguard_test(test_file, expected_issues=None):
     """Run ThreadGuard on a test file and check results"""
     script_path = Path(__file__).parent / "threadguard_enhanced.py"
-    
+
     if not script_path.exists():
         print(f"❌ ThreadGuard script not found at {script_path}")
         return False
-    
+
     try:
         # Run ThreadGuard
-        result = subprocess.run([
-            sys.executable, str(script_path), 
-            "--json", f"{test_file}.json",
-            "--quiet",
-            str(test_file)
-        ], capture_output=True, text=True, timeout=30)
-        
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(script_path),
+                "--json",
+                f"{test_file}.json",
+                "--quiet",
+                str(test_file),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+
         # Check if it ran successfully
-        if result.returncode not in [0, 1, 2]:  # 0=success, 1=high issues, 2=critical issues
+        if result.returncode not in [
+            0,
+            1,
+            2,
+        ]:  # 0=success, 1=high issues, 2=critical issues
             print(f"❌ ThreadGuard failed on {test_file.name}")
             print(f"   Error: {result.stderr}")
             return False
-        
+
         # Try to read JSON output
         json_file = Path(f"{test_file}.json")
         if json_file.exists():
             import json
+
             with open(json_file) as f:
                 data = json.load(f)
-            
-            metrics = data.get('files', [{}])[0].get('metrics', {})
-            total_races = metrics.get('total_races', 0)
-            critical_races = metrics.get('critical_races', 0)
-            high_races = metrics.get('high_races', 0)
-            
-            print(f"✅ {test_file.name}: {total_races} races ({critical_races} critical, {high_races} high)")
-            
+
+            metrics = data.get("files", [{}])[0].get("metrics", {})
+            total_races = metrics.get("total_races", 0)
+            critical_races = metrics.get("critical_races", 0)
+            high_races = metrics.get("high_races", 0)
+
+            print(
+                f"✅ {test_file.name}: {total_races} races ({critical_races} critical, {high_races} high)"
+            )
+
             # Clean up
             json_file.unlink()
-            
+
             return True
         else:
             print(f"⚠️ No JSON output for {test_file.name}")
             return True  # Still consider success if analysis ran
-            
+
     except subprocess.TimeoutExpired:
         print(f"❌ ThreadGuard timed out on {test_file.name}")
         return False
@@ -210,35 +224,36 @@ def run_threadguard_test(test_file, expected_issues=None):
         print(f"❌ Error running ThreadGuard on {test_file.name}: {e}")
         return False
 
+
 def main():
     """Main test function"""
     print("=" * 60)
     print("ThreadGuard Enhanced Installation Test")
     print("=" * 60)
-    
+
     # Test dependencies
     if not test_dependencies():
         print("\n❌ Dependency check failed")
         return 1
-    
+
     print(f"\n🧪 Testing ThreadGuard Enhanced...")
-    
+
     # Create temporary directory for test files
     with tempfile.TemporaryDirectory() as temp_dir:
         temp_path = Path(temp_dir)
-        
+
         all_passed = True
-        
+
         # Create and test each test case
         for filename, content in TEST_CASES.items():
             test_file = temp_path / filename
             test_file.write_text(content)
-            
+
             print(f"\n📁 Testing {filename}...")
-            
+
             if not run_threadguard_test(test_file):
                 all_passed = False
-        
+
         print(f"\n{'='*60}")
         if all_passed:
             print("✅ ALL TESTS PASSED")
@@ -256,7 +271,6 @@ def main():
             print("3. File permissions are correct")
             return 1
 
+
 if __name__ == "__main__":
     sys.exit(main())
-
-

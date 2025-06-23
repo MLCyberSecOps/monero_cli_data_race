@@ -6,7 +6,7 @@ labels: "monero-issue, needs-triage"
 ---
 
 ⚠️ **Before You Begin**
-This issue tracker is for issues with the ThreadGuard analysis tool itself. 
+This issue tracker is for issues with the ThreadGuard analysis tool itself.
 
 If you've found a potential issue in Monero's code:
 1. First report it at: [Monero GitHub Issues](https://github.com/monero-project/monero/issues/new/choose)

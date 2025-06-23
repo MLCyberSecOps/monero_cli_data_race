@@ -29,7 +29,7 @@ ThreadGuard is an advanced static analysis tool designed to detect concurrency i
 
 - **Data Race Detection**: Identify unsynchronized access to shared variables across threads
 - **Thread Safety Analysis**: Detect potential thread safety violations in critical sections
-- **Advanced Locking Analysis**: 
+- **Advanced Locking Analysis**:
   - Verify proper mutex locking/unlocking patterns
   - Detect recursive locking
   - Identify potential deadlocks and lock ordering issues
@@ -42,7 +42,7 @@ This tool is developed for software engineering education and research purposes 
 
 ## Author
 
-**Pradeep Kumar**  
+**Pradeep Kumar**
 [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kumar07/)
 
 > *I have used various coding co-pilots to fine tune this tool*

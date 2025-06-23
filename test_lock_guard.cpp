@@ -10,7 +10,7 @@
 
 /**
  * @brief A thread-safe wrapper around std::vector with basic operations
- * 
+ *
  * This class provides thread-safe operations on a vector using std::mutex
  * and RAII lock guards for exception safety.
  */
@@ -32,7 +32,7 @@ public:
         }
         data.push_back(value);
     }
-    
+
     /**
      * @brief Get the current size of the vector
      * @return The number of elements in the vector
@@ -41,7 +41,7 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         return data.size();
     }
-    
+
     /**
      * @brief Access element at specified index with bounds checking
      * @param index The index of the element to access
@@ -52,7 +52,7 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         return data.at(index);
     }
-    
+
     /**
      * @brief Remove all elements from the vector
      */
@@ -60,7 +60,7 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         data.clear();
     }
-    
+
     /**
      * @brief Check if the vector is empty
      * @return true if the vector is empty, false otherwise
@@ -69,7 +69,7 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         return data.empty();
     }
-    
+
     /**
      * @brief Calculate the sum of all elements in the vector
      * @return The sum of all elements
@@ -78,7 +78,7 @@ public:
         std::lock_guard<std::mutex> lock(mtx);
         return std::accumulate(data.begin(), data.end(), 0);
     }
-    
+
     /**
      * @brief Set whether to throw an exception on next push (for testing)
      * @param should_throw Whether to throw on next push
@@ -86,7 +86,7 @@ public:
     void set_throw_on_push(bool should_throw) {
         throw_on_push = should_throw;
     }
-    
+
     /**
      * @brief Sort the elements in the vector
      */
@@ -103,7 +103,7 @@ public:
 class ThreadSafeVectorTest : public ::testing::Test {
 protected:
     ThreadSafeVector vec;
-    
+
     void SetUp() override {
         vec.clear();
     }
@@ -112,15 +112,15 @@ protected:
 // Basic functionality tests
 TEST_F(ThreadSafeVectorTest, BasicOperations) {
     EXPECT_TRUE(vec.empty());
-    
+
     vec.push_back(42);
     EXPECT_EQ(1, vec.size());
     EXPECT_EQ(42, vec.at(0));
-    
+
     vec.push_back(100);
     EXPECT_EQ(2, vec.size());
     EXPECT_EQ(100, vec.at(1));
-    
+
     vec.clear();
     EXPECT_TRUE(vec.empty());
 }
@@ -129,11 +129,11 @@ TEST_F(ThreadSafeVectorTest, BasicOperations) {
 TEST_F(ThreadSafeVectorTest, ExceptionSafety) {
     vec.set_throw_on_push(true);
     EXPECT_THROW(vec.push_back(1), std::runtime_error);
-    
+
     // Should still be in valid state after exception
     EXPECT_NO_THROW(vec.size());
     EXPECT_TRUE(vec.empty());
-    
+
     // Should work normally after clearing the error state
     vec.set_throw_on_push(false);
     EXPECT_NO_THROW(vec.push_back(42));
@@ -144,24 +144,24 @@ TEST_F(ThreadSafeVectorTest, ExceptionSafety) {
 TEST_F(ThreadSafeVectorTest, ConcurrentAccess) {
     const int num_threads = 10;
     const int num_inserts = 1000;
-    
+
     auto worker = [&](int start) {
         for (int i = 0; i < num_inserts; ++i) {
             vec.push_back(start + i);
         }
     };
-    
+
     std::vector<std::thread> threads;
     for (int i = 0; i < num_threads; ++i) {
         threads.emplace_back(worker, i * num_inserts);
     }
-    
+
     for (auto& t : threads) {
         t.join();
     }
-    
+
     EXPECT_EQ(num_threads * num_inserts, vec.size());
-    
+
     // Verify all elements were inserted correctly
     vec.sort();
     for (int i = 0; i < num_threads * num_inserts; ++i) {
@@ -174,9 +174,9 @@ TEST(ThreadSafeVectorPerformance, ConcurrentPerformance) {
     ThreadSafeVector vec;
     const int num_threads = std::thread::hardware_concurrency();
     const int num_inserts = 100000;
-    
+
     auto start = std::chrono::high_resolution_clock::now();
-    
+
     std::vector<std::thread> threads;
     for (int i = 0; i < num_threads; ++i) {
         threads.emplace_back([&]() {
@@ -185,20 +185,20 @@ TEST(ThreadSafeVectorPerformance, ConcurrentPerformance) {
             }
         });
     }
-    
+
     for (auto& t : threads) {
         t.join();
     }
-    
+
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    
+
     std::cout << "\nPerformance Test Results:";
     std::cout << "\nThreads: " << num_threads;
     std::cout << "\nTotal inserts: " << (num_threads * num_inserts);
     std::cout << "\nTime taken: " << duration.count() << "ms";
     std::cout << "\nThroughput: " << (num_threads * num_inserts * 1000.0 / duration.count()) << " ops/s\n";
-    
+
     EXPECT_EQ(num_threads * num_inserts, vec.size());
 }
 };

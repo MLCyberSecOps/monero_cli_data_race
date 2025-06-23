@@ -7,7 +7,7 @@ Apply this by merging the methods into your ThreadGuardAnalyzer class.
 
 Key Fixes:
 1. Missing unlock detection with early returns
-2. Complex deadlock detection in nested method calls  
+2. Complex deadlock detection in nested method calls
 3. STL container race detection
 
 Usage:
@@ -55,16 +55,16 @@ def add_to_init():
     self.stl_container_accesses = defaultdict(list)
     self.method_call_graph = defaultdict(set)
     self.recursive_locks = defaultdict(set)
-    
+
     # STL containers that are NOT thread-safe
     self.non_thread_safe_containers = {
         'std::vector', 'std::deque', 'std::list', 'std::forward_list',
         'std::array', 'std::map', 'std::multimap', 'std::set', 'std::multiset',
-        'std::unordered_map', 'std::unordered_multimap', 
+        'std::unordered_map', 'std::unordered_multimap',
         'std::unordered_set', 'std::unordered_multiset',
         'std::string', 'std::wstring'
     }
-    
+
     # Thread-safe containers (C++11+)
     self.thread_safe_containers = {
         'std::atomic', 'std::shared_ptr'  # Limited thread safety
@@ -78,4 +78,3 @@ def add_to_compile_patterns():
     """
     return """
     # Add these to self.patterns dictionary:
-

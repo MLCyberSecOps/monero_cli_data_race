@@ -3,17 +3,20 @@ Test file: test_thread_safe_queue.py
 Purpose: Tests for analyzing thread-safe queue implementation patterns.
          Verifies proper synchronization in producer-consumer scenarios.
 """
-import pytest
 from pathlib import Path
+
+import pytest
+
 from threadguard_new import ThreadGuardAnalyzer
+
 
 class TestThreadSafeQueue:
     """Tests for thread-safe queue pattern analysis."""
-    
+
     @pytest.fixture
     def analyzer(self):
         return ThreadGuardAnalyzer()
-    
+
     def test_thread_safe_queue(self, analyzer, temp_cpp_file, cleanup_temp_files):
         """Test analysis of thread-safe queue implementation."""
         content = """
@@ -21,7 +24,7 @@ class TestThreadSafeQueue:
         #include <mutex>
         #include <condition_variable>
         #include <optional>
-        
+
         template<typename T>
         class ThreadSafeQueue {
             std::queue<T> m_queue;
@@ -58,11 +61,10 @@ class TestThreadSafeQueue:
             }
         };
         """
-        filepath = temp_cpp_file(content, suffix='.h')
+        filepath = temp_cpp_file(content, suffix=".h")
         cleanup_temp_files(filepath)
-        
+
         result = analyzer.analyze_file(Path(filepath))
         # Should not find any thread safety issues
         assert len(result.races) == 0
         assert len(result.deadlock_risks) == 0
-

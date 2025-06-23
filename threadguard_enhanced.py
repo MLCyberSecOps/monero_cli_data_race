@@ -1058,46 +1058,48 @@ class ThreadGuardAnalyzer:
 
     def _analyze_lock_acquisition_orders(self, lock_acquisition_order, lock_scopes):
         """Analyze lock acquisition orders for potential deadlocks.
-        
+
         This method detects potential deadlocks by analyzing the order in which
         locks are acquired across different code paths. It looks for:
         1. Inconsistent lock acquisition orders (A->B in one path, B->A in another)
         2. Missing unlocks that could lead to deadlocks
         3. Recursive locking patterns that might be problematic
-        
+
         Args:
             lock_acquisition_order: List of lock acquisition events with context
             lock_scopes: Dictionary mapping lock names to their scope information
-            
+
         Returns:
             List of potential deadlock issues found
         """
         deadlock_issues = []
-        
+
         # Track lock acquisition orders per function
         function_lock_orders = {}
-        
+
         # First, group lock acquisitions by function and thread context
         for lock_event in lock_acquisition_order:
-            func_key = (lock_event['function'], lock_event['thread_context'])
+            func_key = (lock_event["function"], lock_event["thread_context"])
             if func_key not in function_lock_orders:
                 function_lock_orders[func_key] = []
             function_lock_orders[func_key].append(lock_event)
-        
+
         # Check for inconsistent lock ordering between functions
         lock_orders = {}
         for func_name, events in function_lock_orders.items():
             # Get the order of locks acquired in this function
-            current_order = [e['lock_name'] for e in events if e['operation'] == 'acquire']
-            
+            current_order = [
+                e["lock_name"] for e in events if e["operation"] == "acquire"
+            ]
+
             # Check against previously seen orders for the same locks
             for i in range(1, len(current_order)):
-                lock_pair = (current_order[i-1], current_order[i])
+                lock_pair = (current_order[i - 1], current_order[i])
                 if lock_pair[0] != lock_pair[1]:  # Skip same-lock pairs
                     if lock_pair not in lock_orders:
                         lock_orders[lock_pair] = set()
                     lock_orders[lock_pair].add(func_name[0])  # Add function name
-        
+
         # Look for inconsistent ordering (A->B in one place, B->A in another)
         for (lock1, lock2), funcs in list(lock_orders.items()):
             reverse_pair = (lock2, lock1)
@@ -1105,78 +1107,80 @@ class ThreadGuardAnalyzer:
                 # We have inconsistent ordering between these locks
                 funcs1 = lock_orders[(lock1, lock2)]
                 funcs2 = lock_orders[reverse_pair]
-                
+
                 # Only report if different functions are involved
                 if not funcs1.intersection(funcs2):
                     issue = {
-                        'type': 'inconsistent_lock_ordering',
-                        'locks': [lock1, lock2],
-                        'functions': list(funcs1.union(funcs2)),
-                        'severity': 'high',
-                        'description': (
+                        "type": "inconsistent_lock_ordering",
+                        "locks": [lock1, lock2],
+                        "functions": list(funcs1.union(funcs2)),
+                        "severity": "high",
+                        "description": (
                             f"Inconsistent lock ordering between {lock1} and {lock2} "
                             f"across functions: {', '.join(funcs1.union(funcs2))}"
                         ),
-                        'suggestion': (
+                        "suggestion": (
                             f"Ensure consistent lock acquisition order between {lock1} and {lock2} "
                             "across all code paths to prevent potential deadlocks."
-                        )
+                        ),
                     }
                     deadlock_issues.append(issue)
-        
+
         # Check for missing unlocks in functions
         for func_name, events in function_lock_orders.items():
             lock_stack = []
             for event in events:
-                if event['operation'] == 'acquire':
-                    lock_stack.append(event['lock_name'])
-                elif event['operation'] == 'release':
-                    if lock_stack and lock_stack[-1] == event['lock_name']:
+                if event["operation"] == "acquire":
+                    lock_stack.append(event["lock_name"])
+                elif event["operation"] == "release":
+                    if lock_stack and lock_stack[-1] == event["lock_name"]:
                         lock_stack.pop()
-            
+
             # Any remaining locks on the stack were not released
             for lock_name in reversed(lock_stack):
                 issue = {
-                    'type': 'missing_unlock',
-                    'lock': lock_name,
-                    'function': func_name[0],
-                    'severity': 'high',
-                    'description': f"Lock '{lock_name}' may not be released in function '{func_name[0]}'",
-                    'suggestion': (
+                    "type": "missing_unlock",
+                    "lock": lock_name,
+                    "function": func_name[0],
+                    "severity": "high",
+                    "description": f"Lock '{lock_name}' may not be released in function '{func_name[0]}'",
+                    "suggestion": (
                         f"Ensure all code paths in '{func_name[0]}' release the lock '{lock_name}'. "
                         "Consider using RAII wrapper classes like std::lock_guard or std::unique_lock."
-                    )
+                    ),
                 }
                 deadlock_issues.append(issue)
-        
+
         # Check for recursive locking patterns
         for func_name, events in function_lock_orders.items():
             lock_depth = {}
             for event in events:
-                if event['operation'] == 'acquire':
-                    lock_depth[event['lock_name']] = lock_depth.get(event['lock_name'], 0) + 1
-                    if lock_depth[event['lock_name']] > 1:
+                if event["operation"] == "acquire":
+                    lock_depth[event["lock_name"]] = (
+                        lock_depth.get(event["lock_name"], 0) + 1
+                    )
+                    if lock_depth[event["lock_name"]] > 1:
                         issue = {
-                            'type': 'recursive_locking',
-                            'lock': event['lock_name'],
-                            'function': func_name[0],
-                            'severity': 'medium',
-                            'description': (
+                            "type": "recursive_locking",
+                            "lock": event["lock_name"],
+                            "function": func_name[0],
+                            "severity": "medium",
+                            "description": (
                                 f"Recursive locking detected for '{event['lock_name']}' "
                                 f"in function '{func_name[0]}'"
                             ),
-                            'suggestion': (
+                            "suggestion": (
                                 f"Avoid recursive locking of '{event['lock_name']}'. "
                                 "If recursive locking is necessary, use std::recursive_mutex instead."
-                            )
+                            ),
                         }
                         deadlock_issues.append(issue)
-                elif event['operation'] == 'release':
-                    if event['lock_name'] in lock_depth:
-                        lock_depth[event['lock_name']] -= 1
-                        if lock_depth[event['lock_name']] == 0:
-                            del lock_depth[event['lock_name']]
-        
+                elif event["operation"] == "release":
+                    if event["lock_name"] in lock_depth:
+                        lock_depth[event["lock_name"]] -= 1
+                        if lock_depth[event["lock_name"]] == 0:
+                            del lock_depth[event["lock_name"]]
+
         return deadlock_issues
 
     def _extract_locking_patterns(self, content: str, filename: str):
@@ -1710,7 +1714,6 @@ class ThreadGuardAnalyzer:
                     ) or (
                         order1[lock1] > order1[lock2] and order2[lock1] < order2[lock2]
                     ):
-
                         # Only report each inconsistent pair once
                         if lock1 < lock2:  # Ensure consistent ordering of the pair
                             self.result.deadlock_risks.append(

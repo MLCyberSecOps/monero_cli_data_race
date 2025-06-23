@@ -1,14 +1,17 @@
-import pytest
 from pathlib import Path
+
+import pytest
+
 from threadguard_new import ThreadGuardAnalyzer
+
 
 class TestAsyncReader:
     """Tests for async reader pattern analysis."""
-    
+
     @pytest.fixture
     def analyzer(self):
         return ThreadGuardAnalyzer()
-    
+
     def test_async_reader_pattern(self, analyzer, temp_cpp_file, cleanup_temp_files):
         """Test analysis of async reader pattern."""
         content = """
@@ -31,7 +34,7 @@ class TestAsyncReader:
                     while (m_run) {
                         std::string input;
                         std::getline(std::cin, input);
-                        
+
                         {
                             std::lock_guard<std::mutex> lock(m_mutex);
                             m_line = std::move(input);
@@ -59,11 +62,10 @@ class TestAsyncReader:
             }
         };
         """
-        filepath = temp_cpp_file(content, suffix='.h')
+        filepath = temp_cpp_file(content, suffix=".h")
         cleanup_temp_files(filepath)
-        
+
         result = analyzer.analyze_file(Path(filepath))
         # Should not find any thread safety issues
         assert len(result.races) == 0
         assert len(result.deadlock_risks) == 0
-
