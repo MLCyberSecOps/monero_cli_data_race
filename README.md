@@ -6,8 +6,8 @@ ThreadGuard is a static analysis tool designed to detect concurrency-related iss
 
 - **Data Race Detection**: Identifies unsynchronized access to shared variables across multiple threads
 - **Locking Pattern Analysis**: Verifies proper mutex locking/unlocking patterns
-- **Thread Safety Analysis**: Detects potential thread safety violations in critical sections
-- **Monero-Specific Patterns**: Specialized detection for common concurrency patterns in Monero's codebase
+- **Thread Safety Analysis**: Detects potential thread safety violations in critical sections.
+- **Monero-Specific Patterns**: Specialized detection for common concurrency patterns in Monero's codebase.
 
 ## Requirements
 
@@ -30,7 +30,7 @@ For detailed documentation, see [THREADGUARD.md](THREADGUARD.md).
 
 ## Research Purpose
 
-This tool is developed for research purposes to analyze potential concurrency issues. It does not contain any exploits. The analysis is not intended for publication.
+This tool is developed for education and research purposes to analyze potential concurrency issues. It does not contain any exploits. The analysis is not intended for publication.
 
 ## License
 
