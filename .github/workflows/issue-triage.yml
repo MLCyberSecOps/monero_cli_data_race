@@ -29,21 +29,14 @@ jobs:
                 labels: ['monero-issue', 'needs-triage']
               });
 
-              // Add comment guiding user
-              const comment = [
-                '### ℹ️ Monero Issue Detected',
-                '',
-                'Thank you for reporting an issue that appears to be related to the Monero codebase.',
-                '',
-                '**Please note**: This repository is for the ThreadGuard analysis tool itself. For Monero code issues:',
-                '',
-                '1. First, report this at the official Monero repository:',
-                '   [Monero GitHub Issues](https://github.com/monero-project/monero/issues/new/choose)',
-                '',
-                '2. Then, you may reference that issue here for tracking purposes.',
-                '',
-                'If this is actually an issue with the ThreadGuard tool, please ignore this message.'
-              ].join('\n');
+              // Create a simple comment
+              const comment = '### ℹ️ Monero Issue Detected\n\n' +
+                'Thank you for reporting an issue that appears to be related to the Monero codebase.\n\n' +
+                '**Please note**: This repository is for the ThreadGuard analysis tool itself. For Monero code issues:\n\n' +
+                '1. First, report this at the official Monero repository:\n' +
+                '   [Monero GitHub Issues](https://github.com/monero-project/monero/issues/new/choose)\n\n' +
+                '2. Then, you may reference that issue here for tracking purposes.\n\n' +
+                'If this is actually an issue with the ThreadGuard tool, please ignore this message.';
 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -53,16 +46,13 @@ jobs:
               });
             }
 
-
   close-invalid-monero-issues:
     needs: triage-monero-issues
     runs-on: ubuntu-latest
     steps:
       - name: Close invalid Monero issues after 7 days
         uses: actions/github-script@v6
-        if: >
-          contains(github.event.issue.labels.*.name, 'monero-issue') &&
-          !contains(github.event.issue.labels.*.name, 'confirmed-bug')
+        if: contains(github.event.issue.labels.*.name, 'monero-issue') && !contains(github.event.issue.labels.*.name, 'confirmed-bug')
         with:
           script: |
             const { owner, repo } = context.repo;
