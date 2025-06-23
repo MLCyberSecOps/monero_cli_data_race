@@ -1,0 +1,17 @@
+# Core dependencies
+networkx>=2.5,<4.0  # For call graph analysis and visualization
+
+# Development and testing
+pytest>=6.0.0        # For running tests
+pytest-cov>=2.0.0    # For test coverage reporting
+black>=21.0          # Code formatter
+mypy>=0.800         # Static type checking
+flake8>=3.9.0       # Linting
+
+# Optional dependencies (for additional features)
+graphviz>=0.16      # For generating visual call graphs (requires Graphviz to be installed)
+pydot>=1.4.1        # Required for graph visualization
+
+# Python version requirement
+# Requires Python 3.7 or higher
+
