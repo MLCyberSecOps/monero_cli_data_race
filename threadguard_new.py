@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
 ThreadGuard: Static Analysis Tool for Concurrency Bug Detection
-Ariane Mission Ready
+
 
 Detects data races, inconsistent locking patterns, and thread safety violations
 specifically targeting async I/O handlers like Monero's async_stdin_reader.
 
-Authors: Pradeep Kumar, Claude Sonnet 4
+Authors: Pradeep Kumar
 License: MIT
 Version: 1.1.0
+Date: 2025-06-22
 """
 
 import re

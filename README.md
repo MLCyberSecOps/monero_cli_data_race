@@ -1,24 +1,28 @@
-# ThreadGuard: Static Analysis for Concurrency Bug Detection and Stratification
+# ThreadGuard: Static Analysis for Concurrency Bug Detection
 
 [![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/MLCyberSecOps/monero_cli_data_race)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Originally developed to analyze concurrency issues in Monero's `async_stdin_reader` class, ThreadGuard is a powerful static analysis tool that can audit any multithreaded C++ project for:
+ThreadGuard was originally developed to assist in the static analysis of a confirmed data race vulnerability in Monero's `async_stdin_reader` class (console_handler.h). The tool is capable of identifying thread safety violations, data races, and synchronization bugs in multithreaded C++ codebases. While its initial focus was the Monero CLI wallet, ThreadGuard's pattern-based engine is extensible to broader C++ concurrency analysis.
 
-- **Data Races**: Detect unsynchronized access to shared variables across threads
-- **Thread Safety**: Identify potential thread safety violations in critical sections
-- **Synchronization Flaws**: Analyze locking patterns and mutex usage
-- **Deadlock Risks**: Spot potential deadlocks and lock ordering issues
-- **Atomic Operation Validation**: Ensure proper use of atomic operations
+## Key Features
 
-The tool's modular architecture and configurable rules make it adaptable to various codebases beyond its original Monero use case.
+- **Data Race Detection**: Identify unsynchronized access to shared variables
+- **Thread Safety Analysis**: Detect potential thread safety violations in critical sections
+- **Locking Pattern Analysis**: Verify proper mutex locking/unlocking patterns
+- **Deadlock Detection**: Spot potential deadlocks and lock ordering issues
+- **Monero-Specific Patterns**: Specialized detection for common concurrency patterns in Monero's codebase
+
+## Research Purpose
+
+This tool is developed for education and research purposes to analyze potential concurrency issues. It does not contain any exploits. The analysis is not intended for publication.
 
 ## Author
 
 **Pradeep Kumar**  
 [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kumar07/)
 
-> *Assisted by various coding co-pilots*
+> *I have used various coding co-pilots to fine tune this tool*
 
 ## Features
 
