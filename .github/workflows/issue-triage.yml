@@ -14,9 +14,9 @@ jobs:
           script: |
             const { title, body, number } = context.issue;
             const keywords = ['monero', 'data race', 'deadlock', 'race condition'];
-            
-            const isMoneroIssue = keywords.some(keyword => 
-              title.toLowerCase().includes(keyword) || 
+
+            const isMoneroIssue = keywords.some(keyword =>
+              title.toLowerCase().includes(keyword) ||
               body.toLowerCase().includes(keyword)
             );
 
@@ -31,12 +31,16 @@ jobs:
 
               // Create a simple comment
               const comment = '### ℹ️ Monero Issue Detected\n\n' +
-                'Thank you for reporting an issue that appears to be related to the Monero codebase.\n\n' +
-                '**Please note**: This repository is for the ThreadGuard analysis tool itself. For Monero code issues:\n\n' +
+                'Thank you for reporting an issue that appears to be related to the ' +
+                'Monero codebase.\n\n' +
+                '**Please note**: This repository is for the ThreadGuard analysis tool ' +
+                'itself. For Monero code issues:\n\n' +
                 '1. First, report this at the official Monero repository:\n' +
-                '   [Monero GitHub Issues](https://github.com/monero-project/monero/issues/new/choose)\n\n' +
+                '   [Monero GitHub Issues]' +
+                '(https://github.com/monero-project/monero/issues/new/choose)\n\n' +
                 '2. Then, you may reference that issue here for tracking purposes.\n\n' +
-                'If this is actually an issue with the ThreadGuard tool, please ignore this message.';
+                'If this is actually an issue with the ThreadGuard tool, please ' +
+                'ignore this message.';
 
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
@@ -52,32 +56,36 @@ jobs:
     steps:
       - name: Close invalid Monero issues after 7 days
         uses: actions/github-script@v6
-        if: contains(github.event.issue.labels.*.name, 'monero-issue') && !contains(github.event.issue.labels.*.name, 'confirmed-bug')
+        if: >
+          contains(github.event.issue.labels.*.name, 'monero-issue') &&
+          !contains(github.event.issue.labels.*.name, 'confirmed-bug')
         with:
           script: |
             const { owner, repo } = context.repo;
             const issue = context.issue;
             const daysUntilClose = 7;
-            
+
             // Get issue creation date
             const { data: issueData } = await github.rest.issues.get({
               owner,
               repo,
               issue_number: issue.number
             });
-            
+
             const createdAt = new Date(issueData.created_at);
             const now = new Date();
             const daysOpen = Math.floor((now - createdAt) / (1000 * 60 * 60 * 24));
-            
+
             if (daysOpen >= daysUntilClose) {
               await github.rest.issues.createComment({
                 owner,
                 repo,
                 issue_number: issue.number,
-                body: 'This issue appears to be related to Monero\'s codebase. Closing as it should be reported to the Monero repository.'
+                body: |
+                  This issue appears to be related to Monero's codebase.
+                  Closing as it should be reported to the Monero repository.
               });
-              
+
               await github.rest.issues.update({
                 owner,
                 repo,

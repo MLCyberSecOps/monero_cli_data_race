@@ -1,0 +1,41 @@
+extends: default
+
+rules:
+  # Line length
+  line-length:
+    max: 120
+    level: warning
+    allow-non-breakable-words: true
+    allow-non-breakable-inline-mappings: true
+
+  # Indentation
+  indentation:
+    spaces: 2
+    indent-sequences: consistent
+    check-multi-line-strings: false
+
+  # Trailing spaces
+  trailing-spaces: disable
+
+  # Empty lines
+  empty-lines:
+    max: 2
+    max-start: 2
+    max-end: 1
+
+  # Comments
+  comments:
+    min-spaces-from-content: 1
+
+  # Document start
+  document-start: disable
+
+  # Truthy values
+  truthy: disable
+
+  # Key ordering
+  key-ordering: disable
+
+  # New line at end of file
+  new-line-at-end-of-file: enable
+  document-end: disable
