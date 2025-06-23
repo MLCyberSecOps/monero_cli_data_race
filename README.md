@@ -1,10 +1,16 @@
-# ThreadGuard: Static Analysis for Concurrency Bug Detection
+# ThreadGuard: Static Analysis for Concurrency Bug Detection and Stratification
+
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/MLCyberSecOps/monero_cli_data_race)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ThreadGuard is a static analysis tool designed to detect concurrency-related issues in C++ code, with special focus on thread safety, data races, and locking patterns. It was specifically developed to analyze Monero's `async_stdin_reader` class but can be adapted for general C++ codebase analysis.
 
 ## Author
 
+**Pradeep Kumar**  
 [![LinkedIn](https://img.shields.io/badge/Connect-LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/kumar07/)
+
+> *Assisted by various coding co-pilots*
 
 ## Features
 
