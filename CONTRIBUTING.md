@@ -33,6 +33,26 @@ Please note that this project is released with a [Contributor Code of Conduct](C
    make install-hooks
    ```
 
+## Reporting Monero Issues
+
+If you've used ThreadGuard to identify potential concurrency issues in the Monero codebase, please follow these steps:
+
+1. **Verify the Issue**
+   - Run the analysis multiple times to confirm consistency
+   - Check if the issue exists in the latest Monero master branch
+   - Review the code to understand the context
+
+2. **Report to Monero**
+   - Create an issue in the [Monero GitHub repository](https://github.com/monero-project/monero/issues/new/choose)
+   - Use a clear, descriptive title (e.g., "Potential data race in [file]:[line]")
+   - Include the ThreadGuard version and analysis output
+   - Tag with appropriate labels (e.g., `bug`, `security`)
+
+3. **Reference in This Repo (Optional)**
+   - Open an issue using the [Monero Issue template](.github/ISSUE_TEMPLATE/monero-issue.md)
+   - Link to the Monero issue
+   - This helps us track how the tool is being used to improve Monero
+
 ## Development Workflow
 
 1. Run all checks before committing:
