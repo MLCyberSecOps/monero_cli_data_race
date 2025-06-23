@@ -1,0 +1,11 @@
+# Test dependencies
+pytest>=6.0.0
+pytest-cov>=2.8.0
+coverage>=5.0.0
+pylint>=2.6.0
+mypy>=0.782
+
+# Development tools
+black>=21.5b2
+isort>=5.0.0
+flake8>=3.8.0
