@@ -1,17 +1,40 @@
-# ThreadGuard: Static Analysis for Concurrency Bug Detection
+# ThreadGuard: Advanced Static Analysis for Concurrency Bug Detection
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue)](https://github.com/MLCyberSecOps/monero_cli_data_race)
+[![Version](https://img.shields.io/badge/version-2.0.0-blue)](https://github.com/MLCyberSecOps/monero_cli_data_race)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python](https://img.shields.io/badge/Python-3.7%2B-blue)](https://www.python.org/)
 
-ThreadGuard was originally developed to assist in the static analysis of a confirmed data race vulnerability in Monero's `async_stdin_reader` class (console_handler.h). The tool is capable of identifying thread safety violations, data races, and synchronization bugs in multithreaded C++ codebases. While its initial focus was the Monero CLI wallet, ThreadGuard's pattern-based engine is extensible to broader C++ concurrency analysis.
+ThreadGuard is an advanced static analysis tool designed to detect concurrency issues in C++ codebases. Initially developed to analyze the Monero CLI wallet, it has evolved into a comprehensive solution for identifying thread safety violations, data races, and synchronization bugs in multithreaded applications.
 
-## Key Features
+## 🔄 Version 2.0.0 Changelog (2024-06-23)
 
-- **Data Race Detection**: Identify unsynchronized access to shared variables
+### 🚀 New Features
+- **Enhanced Deadlock Detection**: Improved algorithms for detecting potential deadlocks and lock ordering issues
+- **Mutex Checker Tool**: Added `simple_mutex_checker.py` for quick analysis of mutex usage patterns
+- **Monero Analysis Scripts**: Specialized scripts for analyzing Monero's codebase
+- **Performance Optimizations**: Faster analysis through optimized pattern matching
+
+### 🐛 Bug Fixes
+- Fixed false positives in lock acquisition order analysis
+- Improved handling of RAII lock guards
+- Better detection of recursive locking patterns
+
+### 📦 Dependencies
+- Updated to support Python 3.7+
+- Added new dependencies for enhanced analysis
+
+---
+
+## ✨ Key Features
+
+- **Data Race Detection**: Identify unsynchronized access to shared variables across threads
 - **Thread Safety Analysis**: Detect potential thread safety violations in critical sections
-- **Locking Pattern Analysis**: Verify proper mutex locking/unlocking patterns
-- **Deadlock Detection**: Spot potential deadlocks and lock ordering issues
-- **Monero-Specific Patterns**: Specialized detection for common concurrency patterns in Monero's codebase
+- **Advanced Locking Analysis**: 
+  - Verify proper mutex locking/unlocking patterns
+  - Detect recursive locking
+  - Identify potential deadlocks and lock ordering issues
+- **Monero-Specific Analysis**: Specialized detection for common concurrency patterns in Monero's codebase
+- **Comprehensive Reporting**: Generate detailed reports in multiple formats (JSON, console)
 
 ## Research Purpose
 
@@ -37,17 +60,24 @@ This tool is developed for education and research purposes to analyze potential 
 - Dependencies listed in `requirements.txt`
 - For development: Additional dependencies in `requirements-dev.txt`
 
-## Installation
+## 🛠️ Installation
+
+### Prerequisites
+- Python 3.7 or higher
+- GCC/Clang for C++ code analysis
+- Git (for cloning the repository)
 
 ### Basic Installation
 ```bash
-pip install -r requirements.txt
-```
-
-### Development Setup
-```bash
 # Clone the repository
 git clone https://github.com/MLCyberSecOps/monero_cli_data_race.git
+cd monero_cli_data_race
+
+# Install dependencies
+pip install -r requirements.txt
+
+# For development (optional)
+pip install -r requirements-dev.txt
 cd monero_cli_data_race
 
 # Install development dependencies
