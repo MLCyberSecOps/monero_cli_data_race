@@ -35,12 +35,46 @@ This tool is developed for education and research purposes to analyze potential 
 
 - Python 3.7+
 - Dependencies listed in `requirements.txt`
+- For development: Additional dependencies in `requirements-dev.txt`
 
 ## Installation
 
+### Basic Installation
 ```bash
 pip install -r requirements.txt
 ```
+
+### Development Setup
+```bash
+# Clone the repository
+git clone https://github.com/MLCyberSecOps/monero_cli_data_race.git
+cd monero_cli_data_race
+
+# Install development dependencies
+pip install -r requirements-dev.txt
+```
+
+## Testing
+
+Run the test suite with:
+
+```bash
+# Run all tests
+python -m pytest tests/
+
+# Run with coverage report
+pytest --cov=threadguard_new tests/
+
+
+# Run a specific test file
+python -m pytest tests/test_analyzer.py -v
+```
+
+### Test Structure
+
+- `tests/test_analyzer.py`: Unit tests for core analyzer functionality
+- `tests/test_integration.py`: Integration tests with real C++ files
+- `tests/test_utils.py`: Test utilities and test data
 
 ## Usage
 

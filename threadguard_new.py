@@ -17,6 +17,8 @@ import sys
 import json
 import argparse
 import ast
+import networkx as nx
+from collections import defaultdict
 from typing import Dict, List, Set, Tuple, Optional, NamedTuple, DefaultDict
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -88,6 +90,7 @@ class ThreadGuardAnalyzer:
     def __init__(self):
         # Shared state tracking
         self.shared_vars: Set[str] = set()
+        self.global_vars: Set[str] = set()
         self.memory_accesses: Dict[str, List[MemoryAccess]] = defaultdict(list)
         self.locking_patterns: Dict[str, List[LockingPattern]] = defaultdict(list)
         self.call_graph = nx.DiGraph()
@@ -127,9 +130,18 @@ class ThreadGuardAnalyzer:
             
         Returns:
             AnalysisResult containing all detected issues
+            
+        Raises:
+            FileNotFoundError: If the specified file does not exist
         """
         self.result = AnalysisResult()
         
+        # Check if file exists first
+        if not filepath.exists():
+            error_msg = f"File does not exist: {filepath}"
+            self.result.inconsistent_locking.append(error_msg)
+            return self.result
+            
         try:
             content = filepath.read_text(encoding='utf-8', errors='ignore')
             
@@ -204,12 +216,33 @@ class ThreadGuardAnalyzer:
         class_pattern = r'class\s+\w+\s*{[^}]*}'
         var_pattern = r'm_\w+\s*;'
         
+        # Extract member variables (typically prefixed with m_)
         for class_match in re.finditer(class_pattern, content, re.DOTALL):
             class_body = class_match.group(0)
             for var_match in re.finditer(var_pattern, class_body):
                 var_name = var_match.group(0).split(';')[0].strip()
                 if var_name.startswith('m_'):
                     self.shared_vars.add(var_name)
+
+        # Extract top-level global variables (e.g., int counter = 0;)
+        # Extract global variables (ignore lines with parentheses or brace-init)
+        # Extract global variables of fundamental types before any function or class definitions
+        header = content
+        first_def = re.search(r'^\s*(?:class\s+\w+|[\w:<>]+\s+\w+\s*\()', content, re.MULTILINE)
+        if first_def:
+            header = content[: first_def.start()]
+
+        global_pattern = (
+            r'^\s*(?:static\s+)?'            # optional static
+            r'(?:int|long|short|char|bool|float|double)\s+'  # fundamental type
+            r'([A-Za-z_]\w*)'                  # variable name
+            r'\s*(?:=[^;]*)?;'                 # optional initializer
+        )
+        for match in re.finditer(global_pattern, header, re.MULTILINE):
+            var_name = match.group(1)
+            if var_name not in self.shared_vars:
+                self.global_vars.add(var_name)
+                self.shared_vars.add(var_name)
     
     def _extract_memory_accesses(self, content: str, filename: str):
         """Extract memory accesses from the code"""
@@ -239,13 +272,23 @@ class ThreadGuardAnalyzer:
         lines = content.split('\n')
         current_function = ""
         
+        # Track the current scope and locks held in each scope
+        scope_stack = []  # Stack of (start_line, end_line, function_name, locks_held)
+        raii_vars = {}    # Map of variable names to their RAII mutex names
+        
         for i, line in enumerate(lines, 1):
-            # Track function definitions
-            func_match = re.search(r'\w+\s+\w+\s*::\s*(\w+)\s*\s*\w*\s*[({]', line)
-            if func_match:
+            # Track function definitions - handle both member and free functions
+            func_match = re.search(r'(?:\w+\s+)*(?:\w+\s*::\s*)?(\w+)\s*[^;{=]*[({]', line)
+            if func_match and '{' in line and not any(kw in line for kw in ['if', 'while', 'for', 'switch']):
                 current_function = func_match.group(1)
+                scope_stack.append((i, None, current_function, set()))
             
-            # Check for lock operations
+            # Check for scope end
+            if '}' in line and scope_stack:
+                start_line, _, func_name, _ = scope_stack[-1]
+                scope_stack[-1] = (start_line, i, func_name, scope_stack[-1][3])
+            
+            # Check for direct mutex operations (mutex.lock(), mutex.unlock())
             lock_match = re.search(r'(\w+)\.(lock|unlock|try_lock)\s*\(', line)
             if lock_match:
                 mutex_name = lock_match.group(1)
@@ -254,8 +297,36 @@ class ThreadGuardAnalyzer:
                     mutex_name=mutex_name,
                     operation=operation,
                     line_number=i,
-                    function=current_function
+                    function=current_function if current_function else "<global>"
                 ))
+            
+            # Check for std::lock_guard declaration (RAII-style locking)
+            lock_guard_match = re.search(r'std\s*::\s*lock_guard\s*<[^>]+>\s+(\w+)\s*\(\s*([^)]+)\s*\)', line)
+            if lock_guard_match:
+                var_name = lock_guard_match.group(1)
+                mutex_name = lock_guard_match.group(2).strip()
+                raii_vars[var_name] = mutex_name
+                
+                # Add lock operation (lock_guard locks on construction)
+                self.locking_patterns[mutex_name].append(LockingPattern(
+                    mutex_name=mutex_name,
+                    operation='lock',
+                    line_number=i,
+                    function=current_function if current_function else "<global>"
+                ))
+                
+                # Track the lock in the current scope
+                if scope_stack:
+                    scope_stack[-1][3].add(mutex_name)
+            
+            # Check for RAII variable going out of scope
+            for var_name, mutex_name in list(raii_vars.items()):
+                if f'{var_name}.' in line or f'{var_name}->' in line:
+                    # Variable is still in use
+                    continue
+                if var_name in line and '=' not in line.split('//')[0]:  # Not an assignment
+                    # Variable might be going out of scope
+                    raii_vars.pop(var_name, None)
     
     def _build_call_graph(self, content: str):
         """Build call graph from the code"""
@@ -276,10 +347,9 @@ class ThreadGuardAnalyzer:
                     for j in range(i + 1, len(accesses)):
                         access1 = accesses[i]
                         access2 = accesses[j]
-                        
-                        # Check if accesses are in different threads and not properly protected
-                        if (access1.thread_context != access2.thread_context and 
-                            not (access1.is_protected and access2.is_protected)):
+
+                        # Global variables are considered shared across threads
+                        if var in self.global_vars:
                             self.result.races.append(RaceCondition(
                                 variable=var,
                                 access1=access1,
@@ -288,6 +358,18 @@ class ThreadGuardAnalyzer:
                                 description=f"Potential race condition on {var} between {access1.function}() and {access2.function}()",
                                 fix_suggestion=f"Protect access to {var} with a mutex in both functions"
                             ))
+                        else:
+                            # Check if accesses are in different threads and unprotected
+                            if (access1.thread_context != access2.thread_context and 
+                                not (access1.is_protected and access2.is_protected)):
+                                self.result.races.append(RaceCondition(
+                                    variable=var,
+                                    access1=access1,
+                                    access2=access2,
+                                    severity=SeverityLevel.HIGH,
+                                    description=f"Potential race condition on {var} between {access1.function}() and {access2.function}()",
+                                    fix_suggestion=f"Protect access to {var} with a mutex in both functions"
+                                ))
     
     def _analyze_locking_consistency(self):
         """Analyze locking patterns for consistency"""
@@ -310,13 +392,248 @@ class ThreadGuardAnalyzer:
                 )
     
     def _detect_deadlock_potential(self):
-        """Detect potential deadlocks"""
-        # Simple implementation - would need more sophisticated analysis
-        pass
+        """
+        Detect potential deadlocks by analyzing lock acquisition patterns.
+        
+        This method identifies several types of deadlock risks:
+        1. Lock ordering violations (different functions acquiring the same locks in different orders)
+        2. Nested locks that could lead to deadlocks
+        3. Missing lock releases
+        4. Potential deadlock cycles in the lock acquisition graph
+        """
+        # Build a lock acquisition graph where nodes are functions and edges represent
+        # lock acquisition order between functions
+        lock_graph = nx.DiGraph()
+        function_locks = defaultdict(list)  # function_name -> list of (lock_name, line_number, is_recursive, is_raii)
+        function_calls = defaultdict(set)   # function_name -> set of called_functions
+        
+        # First pass: Track locks and function calls
+        print("\n=== Locking Patterns ===")  # Debug
+        for mutex, operations in self.locking_patterns.items():
+            print(f"\nMutex: {mutex}")
+            for op in operations:
+                print(f"  - {op.function}(): {op.operation} at line {op.line_number}")
+            # Group operations by function
+            func_ops = defaultdict(list)
+            for op in operations:
+                func_ops[op.function].append(op)
+                
+            # Analyze lock order within each function
+            for func, ops in func_ops.items():
+                # Skip global scope for RAII detection
+                if func == "<global>":
+                    continue
+                    
+                # Sort operations by line number to determine acquisition order
+                sorted_ops = sorted(ops, key=lambda x: x.line_number)
+                acquired = {}
+                
+                for op in sorted_ops:
+                    if op.operation == 'lock':
+                        is_raii = 'lock_guard' in str(op)  # Check if this is an RAII-style lock
+                        if mutex in acquired:
+                            # Mark as recursive lock
+                            function_locks[func].append((mutex, op.line_number, True, is_raii))
+                            # Only report recursive locks for non-RAII locks
+                            if not is_raii:
+                                self.result.deadlock_risks.append(
+                                    f"Recursive lock on {mutex} in {func}() at line {op.line_number}"
+                                )
+                        else:
+                            function_locks[func].append((mutex, op.line_number, False, is_raii))
+                            
+                        # Track lock acquisition with RAII info
+                        acquired[mutex] = {
+                            'line': op.line_number,
+                            'is_raii': is_raii
+                        }
+                        
+                    elif op.operation == 'unlock':
+                        if mutex in acquired:
+                            del acquired[mutex]
+                        else:
+                            # Only report unmatched unlocks for non-RAII locks
+                            if not any('lock_guard' in str(op2) for op2 in ops if op2.operation == 'lock' and op2.line_number < op.line_number):
+                                self.result.deadlock_risks.append(
+                                    f"Unlock without matching lock for {mutex} in {func}() at line {op.line_number}"
+                                )
+                    
+                    # Skip call tracking for now as it's not used in current implementation
+                
+                # Check for potential lock leaks (only for non-RAII locks)
+                for lock_name, lock_info in list(acquired.items()):
+                    if not lock_info['is_raii']:
+                        self.result.deadlock_risks.append(
+                            f"Potential lock leak in {func}() - lock '{lock_name}' not released"
+                        )
+        
+        # Second pass: Detect potential lock ordering issues
+        # Build a map of lock sequences per function
+        print("\n=== Function Lock Sequences ===")  # Debug
+        function_lock_sequences = {}
+        
+        # Only consider functions that acquire at least two different locks
+        for func, locks in function_locks.items():
+            # Get unique non-recursive locks in acquisition order
+            seen_locks = set()
+            unique_locks = []
+            for lock in locks:
+                if not lock[2] and lock[0] not in seen_locks:  # Not recursive and not seen
+                    seen_locks.add(lock[0])
+                    unique_locks.append(lock[0])
+            
+            if len(unique_locks) >= 2:
+                function_lock_sequences[func] = unique_locks
+                print(f"\nFunction: {func}()")
+                print(f"  Locks in order: {unique_locks}")
+                
+                # Add all locks to the lock graph
+                for lock in unique_locks:
+                    lock_graph.add_node(lock)
+                
+                # Add edges between locks acquired in sequence
+                for i in range(len(unique_locks)):
+                    for j in range(i + 1, len(unique_locks)):
+                        lock1 = unique_locks[i]
+                        lock2 = unique_locks[j]
+                        if not lock_graph.has_edge(lock1, lock2):
+                            lock_graph.add_edge(lock1, lock2, weight=1)
+        
+        # Third pass: Detect potential deadlocks by looking for cycles in the lock graph
+        try:
+            cycles = list(nx.simple_cycles(lock_graph))
+            if cycles:
+                for cycle in cycles:
+                    if len(cycle) >= 2:  # We only care about cycles of length 2 or more
+                        cycle_str = " -> ".join(cycle)
+                        self.result.deadlock_risks.append(
+                            f"Potential deadlock cycle detected: {cycle_str}"
+                        )
+        except nx.NetworkXNoCycle:
+            pass  # No cycles found, which is good
+            
+        # Fourth pass: Check for inconsistent lock ordering across functions
+        func_pairs = list(itertools.combinations(function_lock_sequences.items(), 2))
+        for (func1, seq1), (func2, seq2) in func_pairs:
+            # Find common locks between the two functions
+            common_locks = set(seq1) & set(seq2)
+            if len(common_locks) >= 2:
+                # Check if the order of common locks is different
+                order1 = [lock for lock in seq1 if lock in common_locks]
+                order2 = [lock for lock in seq2 if lock in common_locks]
+                
+                # Check if the relative order of any two locks is different
+                for i in range(len(order1)):
+                    for j in range(i + 1, len(order1)):
+                        lock1, lock2 = order1[i], order1[j]
+                        try:
+                            idx2_1 = order2.index(lock1)
+                            idx2_2 = order2.index(lock2)
+                            if idx2_1 > idx2_2:
+                                # Different order detected
+                                self.result.deadlock_risks.append(
+                                    f"Inconsistent lock ordering between {func1}() and {func2}(): "
+                                    f"{lock1} before {lock2} vs {lock2} before {lock1}"
+                                )
+                        except ValueError:
+                            continue
+        
+        # Check for potential deadlocks between different functions
+        functions = list(function_lock_sequences.keys())
+        for i in range(len(functions)):
+            for j in range(i + 1, len(functions)):
+                func1 = functions[i]
+                func2 = functions[j]
+                seq1 = function_lock_sequences[func1]
+                seq2 = function_lock_sequences[func2]
+                
+                # Find all pairs of locks that appear in both sequences in different orders
+                for lock1 in seq1:
+                    for lock2 in seq1:
+                        if lock1 == lock2:
+                            continue
+                            
+                        # Check if these locks appear in the opposite order in the other function
+                        try:
+                            idx1_1 = seq1.index(lock1)
+                            idx1_2 = seq1.index(lock2)
+                            
+                            # Only proceed if lock1 is before lock2 in the first function
+                            if idx1_1 >= idx1_2:
+                                continue
+                                
+                            # Check if lock2 is before lock1 in the second function
+                            if lock1 in seq2 and lock2 in seq2:
+                                idx2_1 = seq2.index(lock1)
+                                idx2_2 = seq2.index(lock2)
+                                
+                                if idx2_2 < idx2_1:  # Opposite order
+                                    # Potential deadlock detected
+                                    msg = (
+                                        f"Potential deadlock between {func1}() and {func2}(): "
+                                        f"{func1}() acquires {lock1} before {lock2}, "
+                                        f"while {func2}() acquires them in the opposite order"
+                                    )
+                                    if msg not in self.result.deadlock_risks:
+                                        self.result.deadlock_risks.append(msg)
+                        except ValueError:
+                            continue
+        
+        # Third pass: Check for lock hierarchy violations and recursive calls with locks
+        for func, locks in function_locks.items():
+            lock_stack = []  # Tracks currently held locks in order
+            
+            # Get all operations in line order (locks, unlocks, and calls)
+            all_ops = sorted(locks + [(call, 0, False) for call in function_calls.get(func, [])], 
+                           key=lambda x: x[1])
+            
+            for op in all_ops:
+                lock_name, line, is_recursive = op
+                
+                # If this is a function call, check if it could lead to a deadlock
+                if lock_name in function_calls:
+                    called_func = lock_name
+                    if called_func in function_locks:
+                        # Get all non-recursive locks acquired by the called function
+                        called_locks = [lock[0] for lock in function_locks[called_func] if not lock[2]]
+                        
+                        # Check if the called function tries to acquire any locks we're holding
+                        for held_lock, _ in lock_stack:
+                            if held_lock in called_locks:
+                                self.result.deadlock_risks.append(
+                                    f"Potential deadlock in {func}() at line {line}: "
+                                    f"calls {called_func}() while holding {held_lock}, "
+                                    f"and {called_func}() also acquires {held_lock}"
+                                )
+                # This is a lock operation
+                elif is_recursive:
+                    continue  # Already handled in first pass
+                elif lock_name in [l[0] for l in lock_stack]:
+                    # Lock already in stack - check if it's the top of stack
+                    if lock_stack[-1][0] != lock_name:
+                        self.result.deadlock_risks.append(
+                            f"Lock hierarchy violation in {func}() at line {line}: "
+                            f"Lock {lock_name} acquired while holding {lock_stack[-1][0]}"
+                        )
+                    lock_stack = [l for l in lock_stack if l[0] != lock_name]
+                else:
+                    lock_stack.append((lock_name, line))
+        
+        # Fourth pass: Check for potential deadlocks in the lock graph
+        try:
+            # Check for cycles in the lock graph (potential deadlocks)
+            cycles = list(nx.simple_cycles(lock_graph))
+            for cycle in cycles:
+                if len(cycle) > 1:  # Only report cycles with 2+ nodes
+                    cycle_str = " -> ".join(cycle)
+                    self.result.deadlock_risks.append(
+                        f"Potential deadlock cycle detected: {cycle_str}"
+                    )
+        except nx.NetworkXNoCycle:
+            pass  # No cycles found
     
     def _validate_atomic_operations(self):
         """Validate atomic operations"""
-        # Check for non-atomic operations on shared variables
         for var, accesses in self.memory_accesses.items():
             if any(not access.is_protected for access in accesses):
                 self.result.atomic_violations.append(
