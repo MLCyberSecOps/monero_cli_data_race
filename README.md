@@ -6,7 +6,7 @@
 
 ThreadGuard is an advanced static analysis tool designed to detect concurrency issues in C++ codebases. Initially developed to analyze the Monero CLI wallet, it has evolved into a comprehensive solution for identifying thread safety violations, data races, and synchronization bugs in multithreaded applications.
 
-## 🔄 Version 2.0.0 Changelog (2024-06-23)
+## 🔄 Version 2.0.0 Changelog (2025-06-23)
 
 ### 🚀 New Features
 - **Enhanced Deadlock Detection**: Improved algorithms for detecting potential deadlocks and lock ordering issues
@@ -38,7 +38,7 @@ ThreadGuard is an advanced static analysis tool designed to detect concurrency i
 
 ## Research Purpose
 
-This tool is developed for education and research purposes to analyze potential concurrency issues. It does not contain any exploits. The analysis is not intended for publication.
+This tool is developed for software engineering education and research purposes to analyze potential concurrency issues. It does not contain any exploits. The analysis is not intended for publication.
 
 ## Author
 
